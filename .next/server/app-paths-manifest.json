@@ -1,0 +1,6 @@
+{
+  "/page": "app/page.js",
+  "/api/music/recommend/route": "app/api/music/recommend/route.js",
+  "/api/music/browse/route": "app/api/music/browse/route.js",
+  "/api/youtube/search/route": "app/api/youtube/search/route.js"
+}
