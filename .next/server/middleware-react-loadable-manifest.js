@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"components\\\\FaceMoodDetector.jsx -> face-api.js\":{\"id\":\"components\\\\FaceMoodDetector.jsx -> face-api.js\",\"files\":[\"static/chunks/_app-pages-browser_node_modules_face-api_js_build_es6_index_js.js\"]}}"
