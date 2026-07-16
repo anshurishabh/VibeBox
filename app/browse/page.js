@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CATEGORIES, LANGUAGES, MOOD_SEARCH_TERMS, MOODS } from "../../lib/moodMapping";
 import SongListItem from "../../components/SongListItem";
 
+// Helper function (logic waisa hi hai)
 function resolveBrowseTarget(type, id) {
   if (type === "category") {
     const cat = CATEGORIES.find((c) => c.id === id);
@@ -24,7 +25,8 @@ function resolveBrowseTarget(type, id) {
   return null;
 }
 
-export default function BrowsePage() {
+// 1. Content component jahan useSearchParams hai
+function BrowseContent() {
   const params = useSearchParams();
   const type = params.get("type");
   const id = params.get("id");
@@ -49,23 +51,15 @@ export default function BrowsePage() {
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, id]);
+  }, [type, id, target]);
 
   if (!target) {
-    return (
-      <main className="min-h-screen px-6 py-10 pb-32">
-        <Link href="/" className="text-paper/60 text-sm">← Back</Link>
-        <p className="mt-6 font-body text-paper/60">Section not found.</p>
-      </main>
-    );
+    return <p className="mt-6 font-body text-paper/60">Section not found.</p>;
   }
 
   return (
-    <main className="min-h-screen px-6 py-8 md:px-12 md:py-10 pb-32">
-      <Link href="/" className="text-paper/60 text-sm">← Back</Link>
+    <>
       <h1 className="font-display text-2xl text-paper mt-4 mb-6">{target.title}</h1>
-
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -85,6 +79,18 @@ export default function BrowsePage() {
           {tracks.map((t, i) => <SongListItem key={t.id} track={t} queue={tracks} index={i} />)}
         </div>
       )}
+    </>
+  );
+}
+
+// 2. Main Page with Suspense
+export default function BrowsePage() {
+  return (
+    <main className="min-h-screen px-6 py-8 md:px-12 md:py-10 pb-32">
+      <Link href="/" className="text-paper/60 text-sm">← Back</Link>
+      <Suspense fallback={<p className="text-paper/60">Loading...</p>}>
+        <BrowseContent />
+      </Suspense>
     </main>
   );
 }
