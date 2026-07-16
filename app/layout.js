@@ -1,10 +1,11 @@
 import "./globals.css";
+import { LanguageProvider } from "../context/LanguageContext";
 import { MoodProvider } from "../context/MoodContext";
 import { PlayerProvider } from "../context/PlayerContext";
 import PlayerBar from "../components/PlayerBar";
 
 export const metadata = {
-  title: "Undertone — music for your moment",
+  title: "VibeBox — music for your moment",
   description: "Mood and situation-aware music streaming",
 };
 
@@ -18,12 +19,14 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="bg-ink text-paper font-body">
-        <MoodProvider>
-          <PlayerProvider>
-            {children}
-            <PlayerBar />
-          </PlayerProvider>
-        </MoodProvider>
+        <LanguageProvider>
+          <MoodProvider>
+            <PlayerProvider>
+              {children}
+              <PlayerBar />
+            </PlayerProvider>
+          </MoodProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

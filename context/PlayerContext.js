@@ -7,7 +7,6 @@ const videoIdCache = new Map();
 
 async function resolveVideoId(track) {
   if (videoIdCache.has(track.id)) return videoIdCache.get(track.id);
-
   const res = await fetch("/api/youtube/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -15,45 +14,67 @@ async function resolveVideoId(track) {
   });
   const data = await res.json();
   if (!res.ok || !data.videoId) throw new Error(data.error || "Video not found");
-
   videoIdCache.set(track.id, data.videoId);
   return data.videoId;
 }
 
+function shuffledKeepingFirst(identity, firstIndex) {
+  const rest = identity.filter((i) => i !== firstIndex);
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rest[i], rest[j]] = [rest[j], rest[i]];
+  }
+  return [firstIndex, ...rest];
+}
+
 export function PlayerProvider({ children }) {
   const [queue, setQueue] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(-1);
+  const [order, setOrder] = useState([]);
+  const [orderPos, setOrderPos] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [status, setStatus] = useState("idle");
   const [errorMessage, setErrorMessage] = useState(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [shuffle, setShuffle] = useState(false);
+  const [repeatMode, setRepeatMode] = useState("off"); // off | all | one
+  const [volume, setVolumeState] = useState(80);
 
-  const containerRef = useRef(null); // React-owned, stays empty forever in JSX
+  const containerRef = useRef(null);
   const ytPlayerRef = useRef(null);
   const queueRef = useRef(queue);
-  const indexRef = useRef(currentIndex);
+  const orderRef = useRef(order);
+  const orderPosRef = useRef(orderPos);
+  const repeatModeRef = useRef(repeatMode);
+  const volumeRef = useRef(volume);
 
   queueRef.current = queue;
-  indexRef.current = currentIndex;
+  orderRef.current = order;
+  orderPosRef.current = orderPos;
+  repeatModeRef.current = repeatMode;
+  volumeRef.current = volume;
 
+  const currentIndex = orderPos >= 0 ? order[orderPos] : -1;
   const currentTrack = currentIndex >= 0 ? queue[currentIndex] : null;
 
-  function goToOffset(offset) {
-    const q = queueRef.current;
-    if (q.length === 0) return;
-    let nextIndex = indexRef.current + offset;
-    if (nextIndex < 0) nextIndex = q.length - 1;
-    if (nextIndex >= q.length) nextIndex = 0;
-    setCurrentIndex(nextIndex);
-    loadTrackAtIndex(nextIndex);
+  function updateMediaSession(track) {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator) || !track) return;
+    navigator.mediaSession.metadata = new window.MediaMetadata({
+      title: track.name,
+      artist: track.artists,
+      album: track.album || "",
+      artwork: track.image ? [{ src: track.image, sizes: "300x300", type: "image/jpeg" }] : [],
+    });
   }
 
-  const loadTrackAtIndex = useCallback(async (index) => {
-    const q = queueRef.current;
-    const track = q[index];
+  const loadTrackAtQueueIndex = useCallback(async (queueIndex) => {
+    const track = queueRef.current[queueIndex];
     if (!track) return;
 
     setStatus("loading");
     setErrorMessage(null);
+    setCurrentTime(0);
+    setDuration(0);
     try {
       const videoId = await resolveVideoId(track);
       if (ytPlayerRef.current?.loadVideoById) {
@@ -61,6 +82,7 @@ export function PlayerProvider({ children }) {
         setStatus("playing");
         setIsPlaying(true);
         addRecentlyPlayed(track);
+        updateMediaSession(track);
       }
     } catch (err) {
       setStatus("error");
@@ -70,11 +92,35 @@ export function PlayerProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function goToOffset(direction) {
+    const ord = orderRef.current;
+    if (ord.length === 0) return;
+    let newPos = orderPosRef.current + direction;
+
+    if (newPos < 0) {
+      if (repeatModeRef.current === "off") return; // already at start, do nothing
+      newPos = ord.length - 1;
+    }
+    if (newPos >= ord.length) {
+      if (repeatModeRef.current === "off") {
+        ytPlayerRef.current?.pauseVideo?.();
+        setIsPlaying(false);
+        return;
+      }
+      newPos = 0;
+    }
+    setOrderPos(newPos);
+    loadTrackAtQueueIndex(ord[newPos]);
+  }
+
+  function playAtOrderPos(pos) {
+    const ord = orderRef.current;
+    if (pos < 0 || pos >= ord.length) return;
+    setOrderPos(pos);
+    loadTrackAtQueueIndex(ord[pos]);
+  }
+
   useEffect(() => {
-    // Create a PLAIN DOM node that React never renders/tracks. YouTube's
-    // player replaces this node with its own iframe - if React had created
-    // this node via JSX, that swap would break React's reconciliation
-    // (causes "insertBefore/removeChild - not a child of this node" errors).
     const playerHost = document.createElement("div");
     containerRef.current.appendChild(playerHost);
 
@@ -84,13 +130,39 @@ export function PlayerProvider({ children }) {
         width: "1",
         playerVars: { autoplay: 1, playsinline: 1 },
         events: {
+          onReady: () => {
+            ytPlayerRef.current?.setVolume?.(volumeRef.current);
+          },
           onStateChange: (event) => {
             if (event.data === window.YT.PlayerState.PLAYING) setIsPlaying(true);
             if (event.data === window.YT.PlayerState.PAUSED) setIsPlaying(false);
-            if (event.data === window.YT.PlayerState.ENDED) goToOffset(1);
+            if (event.data === window.YT.PlayerState.ENDED) {
+              if (repeatModeRef.current === "one") {
+                ytPlayerRef.current.seekTo(0, true);
+                ytPlayerRef.current.playVideo();
+              } else {
+                goToOffset(1);
+              }
+            }
           },
         },
       });
+
+      if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
+        navigator.mediaSession.setActionHandler("play", () => {
+          ytPlayerRef.current?.playVideo();
+          setIsPlaying(true);
+        });
+        navigator.mediaSession.setActionHandler("pause", () => {
+          ytPlayerRef.current?.pauseVideo();
+          setIsPlaying(false);
+        });
+        navigator.mediaSession.setActionHandler("previoustrack", () => goToOffset(-1));
+        navigator.mediaSession.setActionHandler("nexttrack", () => goToOffset(1));
+        navigator.mediaSession.setActionHandler("seekto", (details) => {
+          if (details.seekTime != null) ytPlayerRef.current?.seekTo(details.seekTime, true);
+        });
+      }
     }
 
     if (window.YT && window.YT.Player) {
@@ -102,14 +174,20 @@ export function PlayerProvider({ children }) {
       window.onYouTubeIframeAPIReady = createPlayer;
     }
 
+    const pollId = setInterval(() => {
+      const p = ytPlayerRef.current;
+      if (p?.getCurrentTime && p?.getDuration) {
+        setCurrentTime(p.getCurrentTime() || 0);
+        setDuration(p.getDuration() || 0);
+      }
+    }, 500);
+
     return () => {
-      // Clean up on unmount (rare in dev with Fast Refresh, but keeps things tidy)
+      clearInterval(pollId);
       try {
         ytPlayerRef.current?.destroy?.();
       } catch {}
-      if (containerRef.current?.contains(playerHost)) {
-        containerRef.current.removeChild(playerHost);
-      }
+      if (containerRef.current?.contains(playerHost)) containerRef.current.removeChild(playerHost);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -117,11 +195,39 @@ export function PlayerProvider({ children }) {
   const playQueue = useCallback(
     (tracks, startIndex = 0) => {
       setQueue(tracks);
-      setCurrentIndex(startIndex);
-      loadTrackAtIndex(startIndex);
+      const identity = tracks.map((_, i) => i);
+      const newOrder = shuffle ? shuffledKeepingFirst(identity, startIndex) : identity;
+      setOrder(newOrder);
+      setOrderPos(newOrder.indexOf(startIndex));
+      loadTrackAtQueueIndex(startIndex);
     },
-    [loadTrackAtIndex]
+    [loadTrackAtQueueIndex, shuffle]
   );
+
+  const toggleShuffle = useCallback(() => {
+    setShuffle((prev) => {
+      const next = !prev;
+      const q = queueRef.current;
+      if (q.length > 0) {
+        const curQueueIdx = orderRef.current[orderPosRef.current];
+        if (next) {
+          const identity = q.map((_, i) => i);
+          const newOrder = shuffledKeepingFirst(identity, curQueueIdx);
+          setOrder(newOrder);
+          setOrderPos(0);
+        } else {
+          const identity = q.map((_, i) => i);
+          setOrder(identity);
+          setOrderPos(curQueueIdx);
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const cycleRepeat = useCallback(() => {
+    setRepeatMode((prev) => (prev === "off" ? "all" : prev === "all" ? "one" : "off"));
+  }, []);
 
   const togglePlay = useCallback(() => {
     const p = ytPlayerRef.current;
@@ -135,15 +241,53 @@ export function PlayerProvider({ children }) {
     }
   }, [isPlaying]);
 
+  const seekTo = useCallback((seconds) => {
+    const p = ytPlayerRef.current;
+    if (p?.seekTo) {
+      p.seekTo(seconds, true);
+      setCurrentTime(seconds);
+    }
+  }, []);
+
+  const setVolume = useCallback((v) => {
+    setVolumeState(v);
+    ytPlayerRef.current?.setVolume?.(v);
+  }, []);
+
   const next = useCallback(() => goToOffset(1), []);
   const prev = useCallback(() => goToOffset(-1), []);
 
+  const upcoming = orderPos >= 0 ? order.slice(orderPos + 1).map((i) => queue[i]) : [];
+
   return (
     <PlayerContext.Provider
-      value={{ queue, currentIndex, currentTrack, isPlaying, status, errorMessage, playQueue, togglePlay, next, prev }}
+      value={{
+        queue,
+        order,
+        orderPos,
+        currentIndex,
+        currentTrack,
+        upcoming,
+        isPlaying,
+        status,
+        errorMessage,
+        currentTime,
+        duration,
+        shuffle,
+        repeatMode,
+        volume,
+        playQueue,
+        togglePlay,
+        seekTo,
+        setVolume,
+        toggleShuffle,
+        cycleRepeat,
+        playAtOrderPos,
+        next,
+        prev,
+      }}
     >
       {children}
-      {/* Empty in JSX on purpose - see comment above about why */}
       <div ref={containerRef} className="pointer-events-none opacity-0 fixed -z-10 w-1 h-1 overflow-hidden" />
     </PlayerContext.Provider>
   );

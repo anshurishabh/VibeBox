@@ -4,6 +4,8 @@ import MoodSection from "../components/MoodSection";
 import AutoSection from "../components/AutoSection";
 import RecentlyPlayedSection from "../components/RecentlyPlayedSection";
 import FavoritesSection from "../components/FavoritesSection";
+import PlaylistsSection from "../components/PlaylistsSection";
+import HistoryBasedSection from "../components/HistoryBasedSection";
 import SectionRow from "../components/SectionRow";
 import MoodQuickPicker from "../components/MoodQuickPicker";
 import { CATEGORIES, LANGUAGES } from "../lib/moodMapping";
@@ -40,7 +42,7 @@ export default function Page() {
   return (
     <main className="min-h-screen px-6 py-8 md:px-12 md:py-10 pb-32">
       <header className="mb-8 flex items-center justify-between gap-4 flex-wrap">
-        <p className="font-display text-2xl text-paper">undertone</p>
+        <p className="font-display text-2xl text-paper">VibeBox</p>
         <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-md">
           <input
             value={query}
@@ -64,19 +66,21 @@ export default function Page() {
       ) : (
         <>
           <MoodSection />
-          <AutoSection title="Trending Songs" term="trending hit songs 2026" country="US" />
-          <AutoSection title="Latest Releases" term="new released songs 2026" country="US" />
+          <AutoSection title="Trending Songs" term="trending hit songs 2026" country="US" type="trending" id="trending" />
+          <AutoSection title="Latest Releases" term="new released songs 2026" country="US" type="latest" id="latest" />
+          <HistoryBasedSection />
           <RecentlyPlayedSection />
           <FavoritesSection />
+          <PlaylistsSection />
 
           <h2 className="font-display text-xl text-paper mt-10 mb-4">Language-wise Music</h2>
           {realLanguages.map((l) => (
-            <AutoSection key={l.id} title={l.label} term={l.term} country={l.country} />
+            <AutoSection key={l.id} title={l.label} term={l.term} country={l.country} type="language" id={l.id} />
           ))}
 
           <h2 className="font-display text-xl text-paper mt-10 mb-4">Category-wise Music</h2>
           {CATEGORIES.map((c) => (
-            <AutoSection key={c.id} title={c.label} term={c.term} country="US" />
+            <AutoSection key={c.id} title={c.label} term={c.term} country="US" type="category" id={c.id} />
           ))}
         </>
       )}

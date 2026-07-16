@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-export default function TextMoodInput({ onResult }) {
+export default function TextMoodInput({ onResult, onLanguageDetected }) {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -16,6 +16,7 @@ export default function TextMoodInput({ onResult }) {
       });
       const data = await res.json();
       onResult(data);
+      onLanguageDetected?.(text);
     } finally {
       setLoading(false);
     }

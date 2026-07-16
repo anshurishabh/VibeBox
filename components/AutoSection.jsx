@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import SectionRow from "./SectionRow";
 
-export default function AutoSection({ title, term, country = "US", limit = 12 }) {
+export default function AutoSection({ title, term, country = "US", limit = 12, type, id }) {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,5 +23,7 @@ export default function AutoSection({ title, term, country = "US", limit = 12 })
     return () => { cancelled = true; };
   }, [term, country, limit]);
 
-  return <SectionRow title={title} tracks={tracks} loading={loading} />;
+  const seeMoreHref = type && id ? `/browse?type=${type}&id=${id}` : undefined;
+
+  return <SectionRow title={title} tracks={tracks} loading={loading} seeMoreHref={seeMoreHref} />;
 }
