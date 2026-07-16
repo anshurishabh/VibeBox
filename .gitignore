@@ -9,3 +9,9 @@ coverage/
 venv/
 __pycache__/
 *.log
+node_modules/
+.next/
+dist/
+build/
+.env
+*.log
