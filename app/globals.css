@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-ink: #101014;
+  --color-paper: #F2F0EA;
+}
+
+html.light {
+  --color-ink: #F2F0EA;
+  --color-paper: #101014;
+}
+
 html, body {
   height: 100%;
 }
@@ -11,7 +21,7 @@ html, body {
 }
 
 :focus-visible {
-  outline: 2px solid #F2F0EA;
+  outline: 2px solid var(--color-paper);
   outline-offset: 2px;
 }
 

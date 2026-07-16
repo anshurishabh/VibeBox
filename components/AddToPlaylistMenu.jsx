@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import {
   getPlaylists, createPlaylist, addTrackToPlaylist, removeTrackFromPlaylist, isTrackInPlaylist,
 } from "../lib/localLists";
+import { useToast } from "../context/ToastContext";
 
 export default function AddToPlaylistMenu({ track, open, onClose }) {
   const [playlists, setPlaylists] = useState([]);
   const [newName, setNewName] = useState("");
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (open) setPlaylists(getPlaylists());
@@ -17,8 +19,10 @@ export default function AddToPlaylistMenu({ track, open, onClose }) {
   function handleToggle(playlistId) {
     if (isTrackInPlaylist(playlistId, track.id)) {
       removeTrackFromPlaylist(playlistId, track.id);
+      showToast("Removed from playlist");
     } else {
       addTrackToPlaylist(playlistId, track);
+      showToast("Added to playlist");
     }
     setPlaylists(getPlaylists());
   }
@@ -29,6 +33,7 @@ export default function AddToPlaylistMenu({ track, open, onClose }) {
     addTrackToPlaylist(playlist.id, track);
     setNewName("");
     setPlaylists(getPlaylists());
+    showToast(`Created "${playlist.name}"`);
   }
 
   return (

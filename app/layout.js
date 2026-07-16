@@ -2,6 +2,8 @@ import "./globals.css";
 import { LanguageProvider } from "../context/LanguageContext";
 import { MoodProvider } from "../context/MoodContext";
 import { PlayerProvider } from "../context/PlayerContext";
+import { ThemeProvider } from "../context/ThemeContext";
+import { ToastProvider } from "../context/ToastContext";
 import PlayerBar from "../components/PlayerBar";
 
 export const metadata = {
@@ -19,14 +21,18 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="bg-ink text-paper font-body">
-        <LanguageProvider>
-          <MoodProvider>
-            <PlayerProvider>
-              {children}
-              <PlayerBar />
-            </PlayerProvider>
-          </MoodProvider>
-        </LanguageProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <LanguageProvider>
+              <MoodProvider>
+                <PlayerProvider>
+                  {children}
+                  <PlayerBar />
+                </PlayerProvider>
+              </MoodProvider>
+            </LanguageProvider>
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

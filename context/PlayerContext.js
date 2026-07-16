@@ -37,8 +37,10 @@ export function PlayerProvider({ children }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [shuffle, setShuffle] = useState(false);
-  const [repeatMode, setRepeatMode] = useState("off"); // off | all | one
+  const [repeatMode, setRepeatMode] = useState("off");
   const [volume, setVolumeState] = useState(80);
+  const [sleepTimerEndsAt, setSleepTimerEndsAt] = useState(null);
+  const [sleepTimerRemaining, setSleepTimerRemaining] = useState(null);
 
   const containerRef = useRef(null);
   const ytPlayerRef = useRef(null);
@@ -47,6 +49,8 @@ export function PlayerProvider({ children }) {
   const orderPosRef = useRef(orderPos);
   const repeatModeRef = useRef(repeatMode);
   const volumeRef = useRef(volume);
+  const sleepTimeoutRef = useRef(null);
+  const sleepIntervalRef = useRef(null);
 
   queueRef.current = queue;
   orderRef.current = order;
@@ -98,7 +102,7 @@ export function PlayerProvider({ children }) {
     let newPos = orderPosRef.current + direction;
 
     if (newPos < 0) {
-      if (repeatModeRef.current === "off") return; // already at start, do nothing
+      if (repeatModeRef.current === "off") return;
       newPos = ord.length - 1;
     }
     if (newPos >= ord.length) {
@@ -184,6 +188,8 @@ export function PlayerProvider({ children }) {
 
     return () => {
       clearInterval(pollId);
+      clearTimeout(sleepTimeoutRef.current);
+      clearInterval(sleepIntervalRef.current);
       try {
         ytPlayerRef.current?.destroy?.();
       } catch {}
@@ -254,6 +260,34 @@ export function PlayerProvider({ children }) {
     ytPlayerRef.current?.setVolume?.(v);
   }, []);
 
+  const setSleepTimer = useCallback((minutes) => {
+    clearTimeout(sleepTimeoutRef.current);
+    clearInterval(sleepIntervalRef.current);
+
+    if (!minutes) {
+      setSleepTimerEndsAt(null);
+      setSleepTimerRemaining(null);
+      return;
+    }
+
+    const endsAt = Date.now() + minutes * 60 * 1000;
+    setSleepTimerEndsAt(endsAt);
+    setSleepTimerRemaining(minutes * 60);
+
+    sleepIntervalRef.current = setInterval(() => {
+      const remaining = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+      setSleepTimerRemaining(remaining);
+    }, 1000);
+
+    sleepTimeoutRef.current = setTimeout(() => {
+      ytPlayerRef.current?.pauseVideo?.();
+      setIsPlaying(false);
+      setSleepTimerEndsAt(null);
+      setSleepTimerRemaining(null);
+      clearInterval(sleepIntervalRef.current);
+    }, minutes * 60 * 1000);
+  }, []);
+
   const next = useCallback(() => goToOffset(1), []);
   const prev = useCallback(() => goToOffset(-1), []);
 
@@ -262,29 +296,11 @@ export function PlayerProvider({ children }) {
   return (
     <PlayerContext.Provider
       value={{
-        queue,
-        order,
-        orderPos,
-        currentIndex,
-        currentTrack,
-        upcoming,
-        isPlaying,
-        status,
-        errorMessage,
-        currentTime,
-        duration,
-        shuffle,
-        repeatMode,
-        volume,
-        playQueue,
-        togglePlay,
-        seekTo,
-        setVolume,
-        toggleShuffle,
-        cycleRepeat,
-        playAtOrderPos,
-        next,
-        prev,
+        queue, order, orderPos, currentIndex, currentTrack, upcoming,
+        isPlaying, status, errorMessage, currentTime, duration,
+        shuffle, repeatMode, volume, sleepTimerRemaining,
+        playQueue, togglePlay, seekTo, setVolume, toggleShuffle, cycleRepeat,
+        playAtOrderPos, setSleepTimer, next, prev,
       }}
     >
       {children}

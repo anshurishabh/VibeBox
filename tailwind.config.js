@@ -7,8 +7,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        ink: "#101014",
-        paper: "#F2F0EA",
+        ink: "var(--color-ink)",
+        paper: "var(--color-paper)",
         mist: "#8A8B93",
         moods: {
           calm: "#8C9EFF",

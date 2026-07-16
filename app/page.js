@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
+import { useTheme } from "../context/ThemeContext";
 import MoodSection from "../components/MoodSection";
 import AutoSection from "../components/AutoSection";
 import RecentlyPlayedSection from "../components/RecentlyPlayedSection";
@@ -14,6 +16,7 @@ export default function Page() {
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
   const [searching, setSearching] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   async function handleSearch(e) {
     e.preventDefault();
@@ -42,7 +45,10 @@ export default function Page() {
   return (
     <main className="min-h-screen px-6 py-8 md:px-12 md:py-10 pb-32">
       <header className="mb-8 flex items-center justify-between gap-4 flex-wrap">
-        <p className="font-display text-2xl text-paper">VibeBox</p>
+        <div className="flex items-center gap-4">
+          <p className="font-display text-2xl text-paper">VibeBox</p>
+          <Link href="/stats" className="text-xs font-body text-paper/50 hover:text-paper">Your Stats</Link>
+        </div>
         <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-md">
           <input
             value={query}
@@ -59,6 +65,12 @@ export default function Page() {
             </button>
           )}
         </form>
+        <button
+          onClick={toggleTheme}
+          className="px-3 py-2 rounded-full border border-paper/20 text-paper/70 text-sm"
+        >
+          {theme === "dark" ? "☀️" : "🌙"}
+        </button>
       </header>
 
       {searchResults ? (

@@ -1,11 +1,14 @@
 "use client";
 import { useState } from "react";
 import { usePlayer } from "../context/PlayerContext";
+import { useToast } from "../context/ToastContext";
 import { toggleFavorite, isFavorite } from "../lib/localLists";
+import { fetchRadioTracks } from "../lib/radio";
 import AddToPlaylistMenu from "./AddToPlaylistMenu";
 
 export default function SongListItem({ track, queue, index, onRemove }) {
   const { playQueue, currentTrack } = usePlayer();
+  const { showToast } = useToast();
   const [fav, setFav] = useState(() => isFavorite(track.id));
   const [menuOpen, setMenuOpen] = useState(false);
   const isCurrent = currentTrack?.id === track.id;
@@ -16,7 +19,9 @@ export default function SongListItem({ track, queue, index, onRemove }) {
 
   function handleFavoriteClick(e) {
     e.stopPropagation();
-    setFav(toggleFavorite(track));
+    const nowFav = toggleFavorite(track);
+    setFav(nowFav);
+    showToast(nowFav ? "Added to Favorites" : "Removed from Favorites");
   }
 
   function handleMenuClick(e) {
@@ -27,6 +32,14 @@ export default function SongListItem({ track, queue, index, onRemove }) {
   function handleRemoveClick(e) {
     e.stopPropagation();
     onRemove?.(track);
+    showToast("Removed from playlist");
+  }
+
+  async function handleRadioClick(e) {
+    e.stopPropagation();
+    showToast("Starting radio…");
+    const tracks = await fetchRadioTracks(track);
+    playQueue(tracks, 0);
   }
 
   return (
@@ -46,6 +59,7 @@ export default function SongListItem({ track, queue, index, onRemove }) {
           <p className="font-body text-xs text-paper/50 truncate">{track.artists}</p>
         </div>
         {isCurrent && <span className="text-xs font-mono text-paper/60 flex-shrink-0">playing</span>}
+        <span onClick={handleRadioClick} className="flex-shrink-0 text-lg px-1" title="Start Radio">📻</span>
         <span onClick={handleMenuClick} className="flex-shrink-0 text-lg px-1">➕</span>
         <span onClick={handleFavoriteClick} className="flex-shrink-0 text-lg px-1">{fav ? "❤️" : "🤍"}</span>
         {onRemove && (

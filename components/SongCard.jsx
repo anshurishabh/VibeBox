@@ -1,11 +1,14 @@
 "use client";
 import { useState } from "react";
 import { usePlayer } from "../context/PlayerContext";
+import { useToast } from "../context/ToastContext";
 import { toggleFavorite, isFavorite } from "../lib/localLists";
+import { fetchRadioTracks } from "../lib/radio";
 import AddToPlaylistMenu from "./AddToPlaylistMenu";
 
 export default function SongCard({ track, queue }) {
   const { playQueue, currentTrack } = usePlayer();
+  const { showToast } = useToast();
   const [fav, setFav] = useState(() => isFavorite(track.id));
   const [menuOpen, setMenuOpen] = useState(false);
   const isCurrent = currentTrack?.id === track.id;
@@ -18,12 +21,21 @@ export default function SongCard({ track, queue }) {
 
   function handleFavoriteClick(e) {
     e.stopPropagation();
-    setFav(toggleFavorite(track));
+    const nowFav = toggleFavorite(track);
+    setFav(nowFav);
+    showToast(nowFav ? "Added to Favorites" : "Removed from Favorites");
   }
 
   function handleMenuClick(e) {
     e.stopPropagation();
     setMenuOpen(true);
+  }
+
+  async function handleRadioClick(e) {
+    e.stopPropagation();
+    showToast("Starting radio…");
+    const tracks = await fetchRadioTracks(track);
+    playQueue(tracks, 0);
   }
 
   return (
@@ -44,6 +56,9 @@ export default function SongCard({ track, queue }) {
           </span>
           <span onClick={handleMenuClick} className="absolute top-1.5 left-1.5 w-6 h-6 flex items-center justify-center rounded-full bg-ink/70 text-xs">
             ➕
+          </span>
+          <span onClick={handleRadioClick} className="absolute bottom-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-full bg-ink/70 text-xs" title="Start Radio">
+            📻
           </span>
           {isCurrent && (
             <span className="absolute bottom-1.5 left-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-paper text-ink font-mono">

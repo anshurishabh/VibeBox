@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { usePlayer } from "../context/PlayerContext";
 import QueueView from "./QueueView";
+import SleepTimerButton from "./SleepTimerButton";
 
 function formatTime(seconds) {
   if (!seconds || Number.isNaN(seconds)) return "0:00";
@@ -26,7 +27,6 @@ export default function PlayerBar() {
     <>
       <QueueView open={queueOpen} onClose={() => setQueueOpen(false)} />
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-ink/95 backdrop-blur border-t border-paper/10 px-4 pt-2 pb-3">
-        {/* Real slider - supports click AND drag to seek within the song */}
         <div className="flex items-center gap-2 mb-1">
           <span className="font-mono text-[10px] text-paper/40 w-9 text-right">{formatTime(currentTime)}</span>
           <input
@@ -72,26 +72,17 @@ export default function PlayerBar() {
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={toggleShuffle} className={`text-sm ${shuffle ? "opacity-100" : "opacity-40"}`} title="Shuffle">
-              🔀
-            </button>
-            <button onClick={() => seekTo(Math.max(0, currentTime - 10))} className="text-paper/70 text-xs" title="Back 10s">
-              «10
-            </button>
+            <button onClick={toggleShuffle} className={`text-sm ${shuffle ? "opacity-100" : "opacity-40"}`} title="Shuffle">🔀</button>
+            <button onClick={() => seekTo(Math.max(0, currentTime - 10))} className="text-paper/70 text-xs" title="Back 10s">«10</button>
             <button onClick={prev} className="text-paper/70 text-lg">⏮</button>
             <button onClick={togglePlay} className="w-9 h-9 rounded-full bg-paper text-ink flex items-center justify-center text-sm">
               {isPlaying ? "⏸" : "▶"}
             </button>
             <button onClick={next} className="text-paper/70 text-lg">⏭</button>
-            <button onClick={() => seekTo(Math.min(duration, currentTime + 10))} className="text-paper/70 text-xs" title="Forward 10s">
-              10»
-            </button>
-            <button onClick={cycleRepeat} className={`text-sm ${repeatOpacity}`} title={`Repeat: ${repeatMode}`}>
-              🔁
-            </button>
-            <button onClick={() => setQueueOpen(true)} className="text-paper/70 text-sm" title="Queue">
-              ☰
-            </button>
+            <button onClick={() => seekTo(Math.min(duration, currentTime + 10))} className="text-paper/70 text-xs" title="Forward 10s">10»</button>
+            <button onClick={cycleRepeat} className={`text-sm ${repeatOpacity}`} title={`Repeat: ${repeatMode}`}>🔁</button>
+            <button onClick={() => setQueueOpen(true)} className="text-paper/70 text-sm" title="Queue">☰</button>
+            <SleepTimerButton />
           </div>
         </div>
       </div>
