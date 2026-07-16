@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Undertone — mood & situation music recommender
 
 A Next.js web app that recommends music based on your mood, detected three ways:
@@ -69,3 +70,7 @@ Open http://localhost:3000.
 - Add a "situation" dimension separate from mood — e.g. studying, working out,
   commuting, sleeping — as a second axis alongside mood.
 - Deploy: Vercel is the simplest option for a Next.js app like this.
+=======
+# VibeBox
+Music That Understands You
+>>>>>>> 1fc08813cb85eb6ba46ad2f733a1a515bf8a3bef
