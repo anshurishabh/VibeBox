@@ -3,13 +3,8 @@
 A mood-based music recommender system that curates playlists based on your current vibe, powered by AI.
 
 ## 🚀 Live Demo
-<div align="center">
-  <a href="https://vibebox.netlify.app/">
-    <img src="https://img.shields.io/badge/🚀%20LIVE%20DEMO-OPEN-brightgreen?style=for-the-badge" alt="VibeBox Live Demo">
-  </a>
-</div>
-**Check it out here:** [https://vibbox.netlify.app/](https://vibbox.netlify.app/)
-
+CLICK HERE 
+https://vibbox.netlify.app/
 ---
 
 ## 🛠 Features
