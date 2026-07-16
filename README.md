@@ -5,13 +5,7 @@ A mood-based music recommender system that curates playlists based on your curre
 ## 🚀 Live Demo
 <div align="center">
   <a href="https://vibebox.netlify.app/">
-    <img src="https://img.shields.io/badge/🚀%20LIVE%20DEMO-OPEN-brightgreen?style=for-the-badge" alt="Live Demo">
-  </a>
-  <a href="https://github.com/anshurishabh/VibeBox">
-    <img src="https://img.shields.io/badge/GITHUB-REPOSITORY-black?style=for-the-badge&logo=github" alt="GitHub Repository">
-  </a>
-  <a href="YOUR_GOOGLE_DRIVE_LINK">
-    <img src="https://img.shields.io/badge/💻%20GOOGLE%20DRIVE-OPEN-brightgreen?style=for-the-badge" alt="Google Drive">
+    <img src="https://img.shields.io/badge/🚀%20LIVE%20DEMO-OPEN-brightgreen?style=for-the-badge" alt="VibeBox Live Demo">
   </a>
 </div>
 **Check it out here:** [https://vibbox.netlify.app/](https://vibbox.netlify.app/)
