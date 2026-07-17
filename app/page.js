@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTheme } from "../context/ThemeContext";
 import MoodSection from "../components/MoodSection";
@@ -12,28 +12,47 @@ import SectionRow from "../components/SectionRow";
 import MoodQuickPicker from "../components/MoodQuickPicker";
 import { CATEGORIES, LANGUAGES } from "../lib/moodMapping";
 import ImportExportButtons from "../components/ImportExportButtons";
+import { addRecentSearch, getRecentSearches } from "../lib/localLists";
 
 export default function Page() {
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
   const [searching, setSearching] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [recentSearches, setRecentSearches] = useState([]);
+
+  useEffect(() => {
+    setRecentSearches(getRecentSearches());
+  }, []);
   const { theme, toggleTheme } = useTheme();
 
-  async function handleSearch(e) {
-    e.preventDefault();
-    if (!query.trim()) return;
+  async function runSearch(q) {
+    if (!q.trim()) return;
     setSearching(true);
     try {
       const res = await fetch("/api/music/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query: q }),
       });
       const data = await res.json();
       setSearchResults(data.tracks || []);
+      addRecentSearch(q);
+      setRecentSearches(getRecentSearches());
+      setShowSuggestions(false);
     } finally {
       setSearching(false);
     }
+  }
+
+  function handleSearch(e) {
+    e.preventDefault();
+    runSearch(query);
+  }
+
+  function handleSuggestionClick(q) {
+    setQuery(q);
+    runSearch(q);
   }
 
   function clearSearch() {
@@ -52,12 +71,30 @@ export default function Page() {
           <ImportExportButtons />
         </div>
         <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-md">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search any song or artist…"
-            className="flex-1 rounded-full bg-paper/5 border border-paper/20 px-4 py-2 text-sm text-paper placeholder:text-paper/40 focus:outline-none focus:border-paper/60"
-          />
+          <div className="relative flex-1">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              placeholder="Search any song or artist…"
+              className="w-full rounded-full bg-paper/5 border border-paper/20 px-4 py-2 text-sm text-paper placeholder:text-paper/40 focus:outline-none focus:border-paper/60"
+            />
+            {showSuggestions && recentSearches.length > 0 && (
+              <div className="absolute top-full left-0 mt-1 w-full bg-ink border border-paper/10 rounded-xl p-2 z-10">
+                <p className="text-[10px] font-mono text-paper/40 px-2 mb-1">RECENT SEARCHES</p>
+                {recentSearches.map((s) => (
+                  <button
+                    key={s}
+                    onMouseDown={() => handleSuggestionClick(s)}
+                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-paper/5 text-sm text-paper font-body"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button type="submit" className="px-4 py-2 rounded-full bg-paper text-ink text-sm font-body">
             {searching ? "…" : "Search"}
           </button>

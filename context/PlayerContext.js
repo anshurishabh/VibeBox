@@ -4,13 +4,14 @@ import { addRecentlyPlayed } from "../lib/localLists";
 
 const PlayerContext = createContext(null);
 const videoIdCache = new Map();
+const CROSSFADE_SECONDS = 4;
 
 async function resolveVideoId(track) {
   if (videoIdCache.has(track.id)) return videoIdCache.get(track.id);
   const res = await fetch("/api/youtube/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query: `${track.artists} ${track.name} official audio` }),
+    body: JSON.stringify({ query: track.artists + " " + track.name + " official audio" }),
   });
   const data = await res.json();
   if (!res.ok || !data.videoId) throw new Error(data.error || "Video not found");
@@ -39,16 +40,21 @@ export function PlayerProvider({ children }) {
   const [shuffle, setShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState("off");
   const [volume, setVolumeState] = useState(80);
-  const [sleepTimerEndsAt, setSleepTimerEndsAt] = useState(null);
+  const [crossfadeEnabled, setCrossfadeEnabled] = useState(true);
   const [sleepTimerRemaining, setSleepTimerRemaining] = useState(null);
 
   const containerRef = useRef(null);
-  const ytPlayerRef = useRef(null);
+  const playersRef = useRef({ A: null, B: null });
+  const activeKeyRef = useRef("A");
+  const crossfadingRef = useRef(false);
+  const crossfadeHandledForRef = useRef(null);
+
   const queueRef = useRef(queue);
   const orderRef = useRef(order);
   const orderPosRef = useRef(orderPos);
   const repeatModeRef = useRef(repeatMode);
   const volumeRef = useRef(volume);
+  const crossfadeEnabledRef = useRef(crossfadeEnabled);
   const sleepTimeoutRef = useRef(null);
   const sleepIntervalRef = useRef(null);
 
@@ -57,9 +63,17 @@ export function PlayerProvider({ children }) {
   orderPosRef.current = orderPos;
   repeatModeRef.current = repeatMode;
   volumeRef.current = volume;
+  crossfadeEnabledRef.current = crossfadeEnabled;
 
   const currentIndex = orderPos >= 0 ? order[orderPos] : -1;
   const currentTrack = currentIndex >= 0 ? queue[currentIndex] : null;
+
+  function activePlayer() {
+    return playersRef.current[activeKeyRef.current];
+  }
+  function inactivePlayer() {
+    return playersRef.current[activeKeyRef.current === "A" ? "B" : "A"];
+  }
 
   function updateMediaSession(track) {
     if (typeof navigator === "undefined" || !("mediaSession" in navigator) || !track) return;
@@ -71,18 +85,58 @@ export function PlayerProvider({ children }) {
     });
   }
 
-  const loadTrackAtQueueIndex = useCallback(async (queueIndex) => {
+  const loadTrackAtQueueIndex = useCallback(async (queueIndex, { crossfade = false } = {}) => {
     const track = queueRef.current[queueIndex];
     if (!track) return;
 
+    crossfadeHandledForRef.current = null;
     setStatus("loading");
     setErrorMessage(null);
-    setCurrentTime(0);
-    setDuration(0);
+
     try {
       const videoId = await resolveVideoId(track);
-      if (ytPlayerRef.current?.loadVideoById) {
-        ytPlayerRef.current.loadVideoById(videoId);
+
+      if (crossfade && crossfadeEnabledRef.current) {
+        const outgoing = activePlayer();
+        const incoming = inactivePlayer();
+        incoming.mute();
+        incoming.loadVideoById(videoId);
+        incoming.setVolume(0);
+        incoming.playVideo();
+
+        crossfadingRef.current = true;
+        const steps = 20;
+        const stepMs = (CROSSFADE_SECONDS * 1000) / steps;
+        let i = 0;
+        const targetVol = volumeRef.current;
+
+        const fadeInterval = setInterval(() => {
+          i++;
+          const ratio = i / steps;
+          try {
+            outgoing.setVolume(Math.max(0, targetVol * (1 - ratio)));
+            incoming.setVolume(Math.min(targetVol, targetVol * ratio));
+          } catch {}
+          if (i >= steps) {
+            clearInterval(fadeInterval);
+            try {
+              outgoing.pauseVideo();
+              incoming.unMute();
+              incoming.setVolume(targetVol);
+            } catch {}
+            activeKeyRef.current = activeKeyRef.current === "A" ? "B" : "A";
+            crossfadingRef.current = false;
+          }
+        }, stepMs);
+
+        setStatus("playing");
+        setIsPlaying(true);
+        addRecentlyPlayed(track);
+        updateMediaSession(track);
+      } else {
+        const p = activePlayer();
+        p.setVolume(volumeRef.current);
+        p.loadVideoById(videoId);
         setStatus("playing");
         setIsPlaying(true);
         addRecentlyPlayed(track);
@@ -90,13 +144,13 @@ export function PlayerProvider({ children }) {
       }
     } catch (err) {
       setStatus("error");
-      setErrorMessage(`Couldn't play "${track.name}" - skipping.`);
+      setErrorMessage('Couldn\'t play "' + track.name + '" - skipping.');
       goToOffset(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function goToOffset(direction) {
+  function goToOffset(direction, opts) {
     const ord = orderRef.current;
     if (ord.length === 0) return;
     let newPos = orderPosRef.current + direction;
@@ -107,14 +161,14 @@ export function PlayerProvider({ children }) {
     }
     if (newPos >= ord.length) {
       if (repeatModeRef.current === "off") {
-        ytPlayerRef.current?.pauseVideo?.();
+        activePlayer()?.pauseVideo?.();
         setIsPlaying(false);
         return;
       }
       newPos = 0;
     }
     setOrderPos(newPos);
-    loadTrackAtQueueIndex(ord[newPos]);
+    loadTrackAtQueueIndex(ord[newPos], opts);
   }
 
   function playAtOrderPos(pos) {
@@ -125,25 +179,28 @@ export function PlayerProvider({ children }) {
   }
 
   useEffect(() => {
-    const playerHost = document.createElement("div");
-    containerRef.current.appendChild(playerHost);
+    const hostA = document.createElement("div");
+    const hostB = document.createElement("div");
+    containerRef.current.appendChild(hostA);
+    containerRef.current.appendChild(hostB);
 
-    function createPlayer() {
-      ytPlayerRef.current = new window.YT.Player(playerHost, {
+    function makePlayer(host, key) {
+      return new window.YT.Player(host, {
         height: "1",
         width: "1",
-        playerVars: { autoplay: 1, playsinline: 1 },
+        playerVars: { autoplay: key === "A" ? 1 : 0, playsinline: 1 },
         events: {
           onReady: () => {
-            ytPlayerRef.current?.setVolume?.(volumeRef.current);
+            playersRef.current[key].setVolume(key === activeKeyRef.current ? volumeRef.current : 0);
           },
           onStateChange: (event) => {
+            if (key !== activeKeyRef.current) return; // ignore inactive/preloading player's events
             if (event.data === window.YT.PlayerState.PLAYING) setIsPlaying(true);
             if (event.data === window.YT.PlayerState.PAUSED) setIsPlaying(false);
             if (event.data === window.YT.PlayerState.ENDED) {
               if (repeatModeRef.current === "one") {
-                ytPlayerRef.current.seekTo(0, true);
-                ytPlayerRef.current.playVideo();
+                activePlayer().seekTo(0, true);
+                activePlayer().playVideo();
               } else {
                 goToOffset(1);
               }
@@ -151,49 +208,72 @@ export function PlayerProvider({ children }) {
           },
         },
       });
+    }
+
+    function createPlayers() {
+      playersRef.current.A = makePlayer(hostA, "A");
+      playersRef.current.B = makePlayer(hostB, "B");
 
       if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
         navigator.mediaSession.setActionHandler("play", () => {
-          ytPlayerRef.current?.playVideo();
+          activePlayer()?.playVideo();
           setIsPlaying(true);
         });
         navigator.mediaSession.setActionHandler("pause", () => {
-          ytPlayerRef.current?.pauseVideo();
+          activePlayer()?.pauseVideo();
           setIsPlaying(false);
         });
         navigator.mediaSession.setActionHandler("previoustrack", () => goToOffset(-1));
         navigator.mediaSession.setActionHandler("nexttrack", () => goToOffset(1));
         navigator.mediaSession.setActionHandler("seekto", (details) => {
-          if (details.seekTime != null) ytPlayerRef.current?.seekTo(details.seekTime, true);
+          if (details.seekTime != null) activePlayer()?.seekTo(details.seekTime, true);
         });
       }
     }
 
     if (window.YT && window.YT.Player) {
-      createPlayer();
+      createPlayers();
     } else {
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
       document.body.appendChild(tag);
-      window.onYouTubeIframeAPIReady = createPlayer;
+      window.onYouTubeIframeAPIReady = createPlayers;
     }
 
     const pollId = setInterval(() => {
-      const p = ytPlayerRef.current;
-      if (p?.getCurrentTime && p?.getDuration) {
-        setCurrentTime(p.getCurrentTime() || 0);
-        setDuration(p.getDuration() || 0);
+      const p = activePlayer();
+      if (!p?.getCurrentTime || !p?.getDuration) return;
+      const t = p.getCurrentTime() || 0;
+      const d = p.getDuration() || 0;
+      setCurrentTime(t);
+      setDuration(d);
+
+      // Trigger crossfade a few seconds before the track naturally ends.
+      const ord = orderRef.current;
+      const pos = orderPosRef.current;
+      const hasNext = repeatModeRef.current !== "off" || pos < ord.length - 1;
+      if (
+        crossfadeEnabledRef.current &&
+        !crossfadingRef.current &&
+        d > CROSSFADE_SECONDS * 2 &&
+        d - t <= CROSSFADE_SECONDS &&
+        hasNext &&
+        repeatModeRef.current !== "one" &&
+        crossfadeHandledForRef.current !== pos
+      ) {
+        crossfadeHandledForRef.current = pos;
+        goToOffset(1, { crossfade: true });
       }
-    }, 500);
+    }, 300);
 
     return () => {
       clearInterval(pollId);
       clearTimeout(sleepTimeoutRef.current);
       clearInterval(sleepIntervalRef.current);
       try {
-        ytPlayerRef.current?.destroy?.();
+        playersRef.current.A?.destroy?.();
+        playersRef.current.B?.destroy?.();
       } catch {}
-      if (containerRef.current?.contains(playerHost)) containerRef.current.removeChild(playerHost);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -236,7 +316,7 @@ export function PlayerProvider({ children }) {
   }, []);
 
   const togglePlay = useCallback(() => {
-    const p = ytPlayerRef.current;
+    const p = activePlayer();
     if (!p) return;
     if (isPlaying) {
       p.pauseVideo();
@@ -248,7 +328,7 @@ export function PlayerProvider({ children }) {
   }, [isPlaying]);
 
   const seekTo = useCallback((seconds) => {
-    const p = ytPlayerRef.current;
+    const p = activePlayer();
     if (p?.seekTo) {
       p.seekTo(seconds, true);
       setCurrentTime(seconds);
@@ -257,32 +337,26 @@ export function PlayerProvider({ children }) {
 
   const setVolume = useCallback((v) => {
     setVolumeState(v);
-    ytPlayerRef.current?.setVolume?.(v);
+    if (!crossfadingRef.current) activePlayer()?.setVolume?.(v);
   }, []);
+
+  const toggleCrossfade = useCallback(() => setCrossfadeEnabled((v) => !v), []);
 
   const setSleepTimer = useCallback((minutes) => {
     clearTimeout(sleepTimeoutRef.current);
     clearInterval(sleepIntervalRef.current);
-
     if (!minutes) {
-      setSleepTimerEndsAt(null);
       setSleepTimerRemaining(null);
       return;
     }
-
     const endsAt = Date.now() + minutes * 60 * 1000;
-    setSleepTimerEndsAt(endsAt);
     setSleepTimerRemaining(minutes * 60);
-
     sleepIntervalRef.current = setInterval(() => {
-      const remaining = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
-      setSleepTimerRemaining(remaining);
+      setSleepTimerRemaining(Math.max(0, Math.round((endsAt - Date.now()) / 1000)));
     }, 1000);
-
     sleepTimeoutRef.current = setTimeout(() => {
-      ytPlayerRef.current?.pauseVideo?.();
+      activePlayer()?.pauseVideo?.();
       setIsPlaying(false);
-      setSleepTimerEndsAt(null);
       setSleepTimerRemaining(null);
       clearInterval(sleepIntervalRef.current);
     }, minutes * 60 * 1000);
@@ -298,9 +372,9 @@ export function PlayerProvider({ children }) {
       value={{
         queue, order, orderPos, currentIndex, currentTrack, upcoming,
         isPlaying, status, errorMessage, currentTime, duration,
-        shuffle, repeatMode, volume, sleepTimerRemaining,
+        shuffle, repeatMode, volume, crossfadeEnabled, sleepTimerRemaining,
         playQueue, togglePlay, seekTo, setVolume, toggleShuffle, cycleRepeat,
-        playAtOrderPos, setSleepTimer, next, prev,
+        toggleCrossfade, playAtOrderPos, setSleepTimer, next, prev,
       }}
     >
       {children}

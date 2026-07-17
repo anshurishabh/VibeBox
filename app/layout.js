@@ -6,6 +6,7 @@ import { ThemeProvider } from "../context/ThemeContext";
 import { ToastProvider } from "../context/ToastContext";
 import PlayerBar from "../components/PlayerBar";
 import ServiceWorkerRegister from "../components/ServiceWorkerRegister";
+import OnboardingModal from "../components/OnboardingModal";
 
 export const metadata = {
   title: "VibeBox — music for your moment",
@@ -41,6 +42,7 @@ export default function RootLayout({ children }) {
                 <PlayerProvider>
                   {children}
                   <PlayerBar />
+                  <OnboardingModal />
                 </PlayerProvider>
               </MoodProvider>
             </LanguageProvider>

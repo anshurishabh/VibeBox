@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { usePlayer } from "../context/PlayerContext";
 import QueueView from "./QueueView";
+import NowPlayingView from "./NowPlayingView";
 import SleepTimerButton from "./SleepTimerButton";
 
 function formatTime(seconds) {
@@ -18,6 +19,7 @@ export default function PlayerBar() {
     togglePlay, seekTo, next, prev, toggleShuffle, cycleRepeat, setVolume,
   } = usePlayer();
   const [queueOpen, setQueueOpen] = useState(false);
+  const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
 
   if (!currentTrack) return null;
 
@@ -26,6 +28,7 @@ export default function PlayerBar() {
 
   return (
     <>
+      <NowPlayingView open={nowPlayingOpen} onClose={() => setNowPlayingOpen(false)} />
       <QueueView open={queueOpen} onClose={() => setQueueOpen(false)} />
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-ink/95 backdrop-blur border-t border-paper/10 px-4 pt-2 pb-3">
         <div className="flex items-center gap-2 mb-1">
@@ -50,7 +53,8 @@ export default function PlayerBar() {
               <img src={currentTrack.image} alt={currentTrack.album} className="w-full h-full object-cover" />
             )}
           </div>
-          <div className="min-w-0 flex-1">
+
+          <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setNowPlayingOpen(true)}>
             <p className="font-body text-sm text-paper truncate">{currentTrack.name}</p>
             <p className="font-body text-xs text-paper/50 truncate">
               {status === "loading" ? "Loading…" : currentTrack.artists}
