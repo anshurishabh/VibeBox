@@ -11,6 +11,7 @@ import HistoryBasedSection from "../components/HistoryBasedSection";
 import SectionRow from "../components/SectionRow";
 import MoodQuickPicker from "../components/MoodQuickPicker";
 import { CATEGORIES, LANGUAGES } from "../lib/moodMapping";
+import ImportExportButtons from "../components/ImportExportButtons";
 
 export default function Page() {
   const [query, setQuery] = useState("");
@@ -45,9 +46,10 @@ export default function Page() {
   return (
     <main className="min-h-screen px-6 py-8 md:px-12 md:py-10 pb-32">
       <header className="mb-8 flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <p className="font-display text-2xl text-paper">VibeBox</p>
           <Link href="/stats" className="text-xs font-body text-paper/50 hover:text-paper">Your Stats</Link>
+          <ImportExportButtons />
         </div>
         <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-md">
           <input

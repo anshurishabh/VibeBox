@@ -5,10 +5,21 @@ import { PlayerProvider } from "../context/PlayerContext";
 import { ThemeProvider } from "../context/ThemeContext";
 import { ToastProvider } from "../context/ToastContext";
 import PlayerBar from "../components/PlayerBar";
+import ServiceWorkerRegister from "../components/ServiceWorkerRegister";
 
 export const metadata = {
   title: "VibeBox — music for your moment",
   description: "Mood and situation-aware music streaming",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "VibeBox",
+  },
+};
+
+export const viewport = {
+  themeColor: "#101014",
 };
 
 export default function RootLayout({ children }) {
@@ -19,6 +30,8 @@ export default function RootLayout({ children }) {
           href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
       </head>
       <body className="bg-ink text-paper font-body">
         <ThemeProvider>
@@ -33,6 +46,7 @@ export default function RootLayout({ children }) {
             </LanguageProvider>
           </ToastProvider>
         </ThemeProvider>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

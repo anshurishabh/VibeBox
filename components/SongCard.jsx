@@ -38,14 +38,11 @@ export default function SongCard({ track, queue }) {
     playQueue(tracks, 0);
   }
 
+  const previewFileName = track.name + " (preview).m4a";
+
   return (
     <>
-      <button
-        onClick={handlePlay}
-        className={`group flex-shrink-0 w-36 text-left rounded-xl p-2 transition ${
-          isCurrent ? "bg-paper/10" : "hover:bg-paper/5"
-        }`}
-      >
+      <button onClick={handlePlay} className={"group flex-shrink-0 w-36 text-left rounded-xl p-2 transition " + (isCurrent ? "bg-paper/10" : "hover:bg-paper/5")}>
         <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-ink/40">
           {track.image && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -60,6 +57,11 @@ export default function SongCard({ track, queue }) {
           <span onClick={handleRadioClick} className="absolute bottom-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-full bg-ink/70 text-xs" title="Start Radio">
             📻
           </span>
+          {track.previewUrl ? (
+            <a href={track.previewUrl} download={previewFileName} onClick={(e) => e.stopPropagation()} className="absolute bottom-1.5 left-9 w-6 h-6 flex items-center justify-center rounded-full bg-ink/70 text-xs" title="Download preview">
+              ⬇️
+            </a>
+          ) : null}
           {isCurrent && (
             <span className="absolute bottom-1.5 left-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-paper text-ink font-mono">
               playing

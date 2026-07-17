@@ -42,11 +42,13 @@ export default function SongListItem({ track, queue, index, onRemove }) {
     playQueue(tracks, 0);
   }
 
+  const geniusUrl = "https://genius.com/search?q=" + encodeURIComponent(track.artists + " " + track.name);
+
   return (
     <>
       <button
         onClick={handlePlay}
-        className={`w-full flex items-center gap-4 rounded-xl p-2 text-left transition ${isCurrent ? "bg-paper/10" : "hover:bg-paper/5"}`}
+        className={"w-full flex items-center gap-4 rounded-xl p-2 text-left transition " + (isCurrent ? "bg-paper/10" : "hover:bg-paper/5")}
       >
         <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-ink/40">
           {track.image && (
@@ -58,13 +60,14 @@ export default function SongListItem({ track, queue, index, onRemove }) {
           <p className="font-body text-sm text-paper truncate">{track.name}</p>
           <p className="font-body text-xs text-paper/50 truncate">{track.artists}</p>
         </div>
-        {isCurrent && <span className="text-xs font-mono text-paper/60 flex-shrink-0">playing</span>}
+        {isCurrent ? <span className="text-xs font-mono text-paper/60 flex-shrink-0">playing</span> : null}
+        <a href={geniusUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="flex-shrink-0 text-lg px-1" title="View lyrics on Genius">📝</a>
         <span onClick={handleRadioClick} className="flex-shrink-0 text-lg px-1" title="Start Radio">📻</span>
         <span onClick={handleMenuClick} className="flex-shrink-0 text-lg px-1">➕</span>
         <span onClick={handleFavoriteClick} className="flex-shrink-0 text-lg px-1">{fav ? "❤️" : "🤍"}</span>
-        {onRemove && (
+        {onRemove ? (
           <span onClick={handleRemoveClick} className="flex-shrink-0 text-lg px-1 text-moods-stressed">✕</span>
-        )}
+        ) : null}
       </button>
       <AddToPlaylistMenu track={track} open={menuOpen} onClose={() => setMenuOpen(false)} />
     </>

@@ -8,7 +8,7 @@ function formatTime(seconds) {
   if (!seconds || Number.isNaN(seconds)) return "0:00";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
+  return m + ":" + s.toString().padStart(2, "0");
 }
 
 export default function PlayerBar() {
@@ -22,6 +22,7 @@ export default function PlayerBar() {
   if (!currentTrack) return null;
 
   const repeatOpacity = repeatMode === "off" ? "opacity-40" : "opacity-100";
+  const geniusUrl = "https://genius.com/search?q=" + encodeURIComponent(currentTrack.artists + " " + currentTrack.name);
 
   return (
     <>
@@ -54,9 +55,9 @@ export default function PlayerBar() {
             <p className="font-body text-xs text-paper/50 truncate">
               {status === "loading" ? "Loading…" : currentTrack.artists}
             </p>
-            {status === "error" && errorMessage && (
+            {status === "error" && errorMessage ? (
               <p className="font-body text-xs text-moods-stressed truncate">{errorMessage}</p>
-            )}
+            ) : null}
           </div>
 
           <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
@@ -72,7 +73,7 @@ export default function PlayerBar() {
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={toggleShuffle} className={`text-sm ${shuffle ? "opacity-100" : "opacity-40"}`} title="Shuffle">🔀</button>
+            <button onClick={toggleShuffle} className={"text-sm " + (shuffle ? "opacity-100" : "opacity-40")} title="Shuffle">🔀</button>
             <button onClick={() => seekTo(Math.max(0, currentTime - 10))} className="text-paper/70 text-xs" title="Back 10s">«10</button>
             <button onClick={prev} className="text-paper/70 text-lg">⏮</button>
             <button onClick={togglePlay} className="w-9 h-9 rounded-full bg-paper text-ink flex items-center justify-center text-sm">
@@ -80,8 +81,9 @@ export default function PlayerBar() {
             </button>
             <button onClick={next} className="text-paper/70 text-lg">⏭</button>
             <button onClick={() => seekTo(Math.min(duration, currentTime + 10))} className="text-paper/70 text-xs" title="Forward 10s">10»</button>
-            <button onClick={cycleRepeat} className={`text-sm ${repeatOpacity}`} title={`Repeat: ${repeatMode}`}>🔁</button>
+            <button onClick={cycleRepeat} className={"text-sm " + repeatOpacity} title={"Repeat: " + repeatMode}>🔁</button>
             <button onClick={() => setQueueOpen(true)} className="text-paper/70 text-sm" title="Queue">☰</button>
+            <a href={geniusUrl} target="_blank" rel="noreferrer" className="text-paper/70 text-sm" title="View lyrics on Genius">📝</a>
             <SleepTimerButton />
           </div>
         </div>
